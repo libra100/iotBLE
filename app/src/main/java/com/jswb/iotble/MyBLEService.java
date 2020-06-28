@@ -9,10 +9,19 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 
 import com.inuker.bluetooth.library.BluetoothClient;
+import com.inuker.bluetooth.library.Constants;
 import com.inuker.bluetooth.library.connect.listener.BluetoothStateListener;
+import com.inuker.bluetooth.library.connect.options.BleConnectOptions;
+import com.inuker.bluetooth.library.connect.response.BleConnectResponse;
+import com.inuker.bluetooth.library.model.BleGattCharacter;
+import com.inuker.bluetooth.library.model.BleGattProfile;
+import com.inuker.bluetooth.library.model.BleGattService;
 import com.inuker.bluetooth.library.search.SearchRequest;
 import com.inuker.bluetooth.library.search.SearchResult;
 import com.inuker.bluetooth.library.search.response.SearchResponse;
+
+import java.util.List;
+import java.util.UUID;
 
 public class MyBLEService extends Service {
     public static final int CMD_SCAN_START = 1;
@@ -52,14 +61,9 @@ public class MyBLEService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         int cmd = intent.getIntExtra("CMD", 0);
         switch (cmd) {
-            case CMD_SCAN_START:
-                startScanBLE();
-                break;
-            case CMD_SCAN_STOP:
-                stopScanBLE();
-                break;
-            case CMD_CONNECT_DEVICE:
-                break;
+            case CMD_SCAN_START: startScanBLE();break;
+            case CMD_SCAN_STOP: stopScanBLEDevice();break;
+            case CMD_CONNECT_DEVICE: connectBLEDevice();break;
         }
         return super.onStartCommand(intent, flags, startId);
     }
@@ -79,14 +83,14 @@ public class MyBLEService extends Service {
             @Override
             public void onDeviceFounded(SearchResult device) {
                 Log.v("Leo", device.getName() + "&" + device.getAddress());
-                if (device.getName().equals("A5")) {
+                if (device.getName().equals("ORANGE")) {
                     connectDevice = device;
 
                     Intent intent = new Intent("MyBLEService");
-                    intent.putExtra(" mesg", "found device");
+                    intent.putExtra("mesg", "found device" + device.getName());
                     sendBroadcast(intent);
 
-                    stopScanBLE();
+                    stopScanBLEDevice();
                 }
             }
 
@@ -102,7 +106,54 @@ public class MyBLEService extends Service {
         });
     }
 
-    private void stopScanBLE() {
+    private void connectBLEDevice() {
+        if (connectDevice == null) return;
+        stopScanBLEDevice();
+
+        BleConnectOptions options = new BleConnectOptions.Builder()
+                .setConnectRetry(3)
+                .setConnectTimeout(30000)
+                .setServiceDiscoverRetry(3)
+                .setServiceDiscoverTimeout(20000).build();
+        Log.v("Leo", "connecting...");
+
+        mClient.connect(connectDevice.getAddress(), options, new BleConnectResponse() {
+            @Override
+            public void onResponse(int code, BleGattProfile data) {
+                Log.v("Leo", "code= " + code + ":" + Constants.REQUEST_SUCCESS);
+                if(code == Constants.REQUEST_SUCCESS){
+                    List<BleGattService> bleGattServices = data.getServices();
+                    for(BleGattService bleGattService : bleGattServices){
+                        UUID serviceUUID = bleGattService.getUUID();
+                        Log.v("Leo", "Service UUID="+ serviceUUID.toString());
+//                        if(serviceUUID.toString().equals("")){
+//                            srvUUID = serviceUUID;
+//                        }
+//
+//                        List<BleGattCharacter> bleGattCharacters = bleGattService.getCharacters();
+//                        for(BleGattCharacter bleGattCharacter : bleGattCharacters){
+//                            bleGattCharacter.getProperty();
+//                            Log.v("Leo", bleGattCharacter.getUuid().toString());
+//
+//                            if(bleGattCharacter.getUuid().toString().equals("")){
+//                                characterUUID = bleGattCharacter.getUuid();
+//                            }
+//                        }
+                    }
+//
+//                    // Service:0000180f-0000-1000-8000-00805f9b34fb
+//                    // 00002a19-0000-1000-8000-00805f9b34fb
+//                    openNotify();
+//
+//                    Intent intent = new Intent("MyBLEService");
+//                    intent.putExtra("mesg", "Connect success");
+//                    sendBroadcast(intent);
+                }
+            }
+        });
+    }
+
+    private void stopScanBLEDevice() {
         mClient.stopSearch();
     }
 
