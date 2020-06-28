@@ -13,6 +13,7 @@ import com.inuker.bluetooth.library.Constants;
 import com.inuker.bluetooth.library.connect.listener.BluetoothStateListener;
 import com.inuker.bluetooth.library.connect.options.BleConnectOptions;
 import com.inuker.bluetooth.library.connect.response.BleConnectResponse;
+import com.inuker.bluetooth.library.connect.response.BleNotifyResponse;
 import com.inuker.bluetooth.library.model.BleGattCharacter;
 import com.inuker.bluetooth.library.model.BleGattProfile;
 import com.inuker.bluetooth.library.model.BleGattService;
@@ -56,6 +57,7 @@ public class MyBLEService extends Service {
     }
 
     private SearchResult connectDevice;
+    private UUID srvUUID, characterUUID;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -126,28 +128,47 @@ public class MyBLEService extends Service {
                     for(BleGattService bleGattService : bleGattServices){
                         UUID serviceUUID = bleGattService.getUUID();
                         Log.v("Leo", "Service UUID="+ serviceUUID.toString());
-//                        if(serviceUUID.toString().equals("")){
-//                            srvUUID = serviceUUID;
-//                        }
-//
-//                        List<BleGattCharacter> bleGattCharacters = bleGattService.getCharacters();
-//                        for(BleGattCharacter bleGattCharacter : bleGattCharacters){
-//                            bleGattCharacter.getProperty();
-//                            Log.v("Leo", bleGattCharacter.getUuid().toString());
-//
-//                            if(bleGattCharacter.getUuid().toString().equals("")){
-//                                characterUUID = bleGattCharacter.getUuid();
-//                            }
-//                        }
+                        if(serviceUUID.toString().equals("")){
+                            srvUUID = serviceUUID;
+                        }
+
+                        List<BleGattCharacter> bleGattCharacters = bleGattService.getCharacters();
+                        for(BleGattCharacter bleGattCharacter : bleGattCharacters){
+                            bleGattCharacter.getProperty();
+                            Log.v("Leo", bleGattCharacter.getUuid().toString());
+
+                            if(bleGattCharacter.getUuid().toString().equals("")){
+                                characterUUID = bleGattCharacter.getUuid();
+                            }
+                        }
                     }
-//
-//                    // Service:0000180f-0000-1000-8000-00805f9b34fb
-//                    // 00002a19-0000-1000-8000-00805f9b34fb
-//                    openNotify();
-//
-//                    Intent intent = new Intent("MyBLEService");
-//                    intent.putExtra("mesg", "Connect success");
-//                    sendBroadcast(intent);
+
+                    // Service:0000180f-0000-1000-8000-00805f9b34fb
+                    // 00002a19-0000-1000-8000-00805f9b34fb
+                    openNotify();
+
+                    Intent intent = new Intent("MyBLEService");
+                    intent.putExtra("mesg", "Connect success");
+                    sendBroadcast(intent);
+                }
+            }
+        });
+    }
+
+    private void openNotify(){
+        mClient.notify(connectDevice.getAddress(), srvUUID, characterUUID, new BleNotifyResponse() {
+            @Override
+            public void onNotify(UUID service, UUID character, byte[] value) {
+                Log.v("Leo", "receive");
+                Intent intent = new Intent("MyBLEDevice");
+                intent.putExtra("mseg", "電池目前電量:" + value[0] + "%");
+                sendBroadcast(intent);
+            }
+
+            @Override
+            public void onResponse(int code) {
+                if(code == Constants.REQUEST_SUCCESS){
+
                 }
             }
         });
